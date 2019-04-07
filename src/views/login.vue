@@ -11,7 +11,7 @@
             <el-main>
                 <div v-if="loginWay == '短信登陆'">
                     <div class="mainText">账号</div>
-                    <el-input v-model="accountName"></el-input>
+                    <el-input v-model="accountName" v-on:blur="checkAccountExist"></el-input>
                     <div class="mainText">密码</div>
                     <el-input v-model="passwordNum"></el-input>
                     <div class="mainText">验证码</div>
@@ -29,7 +29,10 @@
                     <div class="mainText">手机号码</div>
                     <el-input v-model="phoneNum"></el-input>
                     <div class="mainText">验证码</div>
-                    <el-input v-model="phoneCheck"></el-input>
+                    <div class="checkNumberPhone">
+                        <el-input class="checkNumberInput" v-model="phoneCheck"></el-input>
+                        <span class="ckeckNumberSpan" @click="getphoneNumber" v-text="ckeckText"></span>
+                    </div>
                     <el-button type="primary" round >确定</el-button>
                 </div>
             </el-main>
@@ -37,21 +40,25 @@
     </div>
 </template>
 <script>
-import { getCheckNumber, loginByAccount } from '../api/until.js'
+import { getCheckNumber, loginByAccount, getPhoneCheck,checkByAccount } from '../api/until.js'
+import { writeLoginMes } from '../api/loginMes.js'
+import { mapMutations } from 'vuex'
 export default {
     data() {
         return {
-            accountName: null,
-            passwordNum: null,
-            checkNum: null,
-            phoneNum:null,
-            phoneCheck: null,
+            accountName: "", //账号
+            passwordNum: "", //密码
+            checkNum: "", // 账号登陆时候的图片验证码
+            phoneNum:null, // 账户手机号码
+            phoneCheck: null, // 手机登陆的验证码
             loginWay: '短信登陆',
-            checkImg: null
+            checkImg: null, // 账号登陆时候的图片验证
+            ckeckText: '获取验证码'
 
         }
     },
     methods: {
+        ...mapMutations(['setUser']),
         changeWayLogin () {
             // 右上角显示的字样与登陆方式刚好相反
             // 显示为短信登陆时候 登陆方式为密码登陆 反之为账号登陆。
@@ -61,6 +68,7 @@ export default {
                 this.loginWay = '短信登陆'
             }
         },
+        // 获取图片验证码
         getCheckImg () {
             getCheckNumber((val) => {
                 this.checkImg = val.data.code
@@ -68,11 +76,85 @@ export default {
                 console.log(err)
             })
         },
+        // 接口验证账号是否存在
+        checkAccountExist () {
+          let account = this.accountName.trim(),
+              self = this
+            function reslove(val) {
+              console.log(val.data.data.loginMes.code )
+                if(val.data.data.loginMes.code === 200) {
+                    console.log('账号存在')
+                } else {
+                    self.$message({
+                        message: '账号不存在',
+                        type: "warning",
+                        duration: 1000
+
+                    })
+                }
+            }
+            function reject(data) {
+              console.log(data)
+            }
+            checkByAccount(account,reslove, reject)
+
+        },
+        // 账号密码登陆
         loginAccount () {
-            let accountN = this.accountName,
-                passwordN = this.passwordNum,
-                checkN = this.checkNum
-            loginByAccount(accountN, passwordN, checkN)
+            let self = this
+            let accountN = this.accountName.trim(),
+                passwordN = this.passwordNum.trim(),
+                checkN = this.checkNum.trim();
+            function reslove(val) {
+                //登陆成功时候的回调函数
+                if (val.data.data.loginMes.code === 200) {
+                    let mes = val.data.data.loginMes
+                    writeLoginMes(mes)
+                    // 将账号密码等信息保存到localStorage中
+                    self.setUser(mes)
+                    // 将返回的信息保存到vuex中
+                    self.$router.push({
+                        path: '/mine'
+                    })
+
+                    // 跳转到对应页面。
+                }else {
+                    self.$message({
+                        message: '账号/密码有误',
+                        type: "warning",
+                        duration: 1000
+
+                    })
+                }
+            }
+            function reject(err) {
+                // 登陆失败时候的回调函数
+                if (err) {
+                    self.$message({
+                        message: '账号/密码有误',
+                        type: "warning",
+                        duration: 1000
+
+                    })
+                }
+            }
+            if (accountN && passwordN && checkN) {
+                loginByAccount(accountN, passwordN, checkN,reslove, reject)
+            }else {
+                console.log('账号密码不能为空')
+            }
+
+        },
+        // 获取手机短信验证码
+        getphoneNumber () {
+            getPhoneCheck(this.phoneNum,function (data) {
+                console.log(data)
+            }, function (data) {
+                console.log(data)
+            })
+        },
+        loginPhone () {
+
         }
     },
     created() {
@@ -81,7 +163,7 @@ export default {
 }
 </script>
 <style lang="less" scoped>
- @mainColor: rgba(41, 236, 34, 0.945);
+ @mainColor: #409EFF;
 .el-header{
     background: @mainColor;
     line-height: 45px;
@@ -116,6 +198,15 @@ export default {
             P:last-of-type{
                 color: blue;
             }
+        }
+    }
+    .checkNumberPhone{
+        position: relative;
+        .ckeckNumberSpan{
+            position: absolute;
+            margin-top: 10px;
+            right: 60px;
+            color: blue;
         }
     }
     .el-button{

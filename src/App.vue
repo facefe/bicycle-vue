@@ -5,11 +5,24 @@
 </template>
 
 <script>
-
+import { readLoginMes } from './api/loginMes'
+import { mapMutations } from 'vuex'
 export default {
   name: 'app',
   components: {
-  }
+  },
+  methods: {
+      ...mapMutations(['setUser']),
+      getMesLogin () {
+          let mes = readLoginMes()
+          if (mes) {
+              this.setUser(mes)
+          }
+      }
+  },
+    mounted() {
+      this.getMesLogin()   
+    }
 }
 </script>
 
