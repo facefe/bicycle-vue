@@ -168,6 +168,7 @@ export default {
     background: @mainColor;
     line-height: 45px;
     font-weight: 600;
+    color: #fff;
     .loginWayButton{
         position: absolute;
         right: 25px;
